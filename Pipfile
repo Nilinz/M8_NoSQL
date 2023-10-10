@@ -9,6 +9,8 @@ mongoengine = "*"
 redis = "*"
 redis-lru = "*"
 pika = "*"
+faker = "*"
+configparser = "*"
 
 [dev-packages]
 
