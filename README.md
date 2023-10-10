@@ -3,8 +3,19 @@
 Для проекту потрібно встановити програми:
 
 - MongoDB: Для роботи з базою даних MongoDB. Можна завантажити з офіційного сайту MongoDB: https://www.mongodb.com/try/download/community
+  
 - Redis: Для використання Redis як системи кешування. Можна завантажити з офіційного сайту: https://redis.io/download/
+Встановіть модуль ``Redis`` в корені проекту:
+  ```
+  pip install redis-lru
+  ```
+  
 - RabbitMQ: Для використання RabbitMQ як системи черги повідомлень. Можна завантажити з офіційного сайту: https://www.rabbitmq.com/download.html
+
+Встановити локально сервіс RabbitMQ можна за допомогою Docker-образу.
+```
+docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3.11-management
+```
 
 ## Запуск проекту
 
