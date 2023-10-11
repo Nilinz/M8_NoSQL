@@ -6,7 +6,7 @@ import redis
 redis_client = redis.StrictRedis(host='localhost', port=6379, db=0)
 
 def search_by_tags(tags):
-    # Функція для пошуку цитат за тегами
+    
     # Перевіряємо, чи результат не зберігався у кеші Redis
     tags_str = ','.join(tags)
     cached_result = redis_client.get(f'tags:{tags_str}')
@@ -45,14 +45,13 @@ def search_quotes():
             print("Невірна команда. Спробуйте ще раз.")
 
 def search_by_author_name(name):
-    # Функція для пошуку цитат за ім'ям автора
+    
     # Перевіряємо, чи результат не зберігався у кеші Redis
     cached_result = redis_client.get(f'author:{name}')
     if cached_result:
         return cached_result.decode('utf-8')
     print(f"Ім'я для пошуку: {name}")
-    # Виконуємо пошук у базі даних MongoDB
-    # Витягуємо всі цитати з бази даних
+    
     quotes = Quote.objects()
     
     # Фільтруємо цитати за ім'ям автора, використовуючи регулярний вираз у Python
@@ -60,7 +59,7 @@ def search_by_author_name(name):
 
 
     
-    # Створюємо рядок результату
+    
     result = '\n'.join([quote.quote for quote in filtered_quotes])
     print(f"Кількість знайдених цитат: {len(filtered_quotes)}")
 

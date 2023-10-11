@@ -28,9 +28,9 @@ def send_fake_contacts():
         channel.basic_publish(exchange='', routing_key='contacts', body=json.dumps(message))
         print(f" [x] Sent {message}")
 
-    # Закриття з'єднання
+    
     connection.close()
 
-# Ця умовна конструкція дозволяє запускати цей файл як скрипт або імпортувати його функції в інших файлах
+
 if __name__ == "__main__":
     send_fake_contacts()

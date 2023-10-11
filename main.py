@@ -17,11 +17,11 @@ def print_menu():
     print("5. Вийти")
 
 def main():
-    # Зчитування URI для MongoDB з конфігураційного файлу
+    
     mongo_uri = get_mongo_uri()
 
-    # Підключення до бази даних MongoDB
-    connect(host=mongo_uri)  # Встановлення з'єднання з базою даних
+    
+    connect(host=mongo_uri)  
     while True:
         print_menu()
         choice = input("Виберіть опцію: ")
