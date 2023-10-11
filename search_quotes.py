@@ -1,71 +1,75 @@
+import re
+from models import Quote
 import redis
-from mongoengine import connect
-from models import Author, Quote
-import configparser
-from mongo_setup import setup_mongo_connection
-
-# Читання конфігураційних даних
-
-config = configparser.ConfigParser()
-config.read('config.ini')
-
-# Підключення до MongoDB
-setup_mongo_connection()
 
 # Підключення до Redis
-redis_client = redis.StrictRedis(host='localhost', port=6379, db=0, decode_responses=True)
+redis_client = redis.StrictRedis(host='localhost', port=6379, db=0)
+
+def search_by_tags(tags):
+    # Функція для пошуку цитат за тегами
+    # Перевіряємо, чи результат не зберігався у кеші Redis
+    tags_str = ','.join(tags)
+    cached_result = redis_client.get(f'tags:{tags_str}')
+    if cached_result:
+        return cached_result.decode('utf-8')
+
+    # Видаляємо можливі пробіли з тегів і виконуємо пошук у базі даних MongoDB
+    cleaned_tags = [tag.strip() for tag in tags]
+    quotes = Quote.objects(tags__in=cleaned_tags)
+    result = '\n'.join([quote.quote for quote in quotes])
+
+    # Зберігаємо результат у кеші Redis на 5 хвилин
+    redis_client.setex(f'tags:{tags_str}', 300, result)
+    return result
+
 def search_quotes():
-    
+    # Функція для пошуку цитат за ім'ям автора, тегом або набором тегів
     while True:
-        try:
-            command = input("Введіть команду (наприклад, name: Steve Martin, tag: life, tags: life,live, exit для виходу): ")
-            cached_result = redis_client.get(command)  # Перевірка результату в Redis кеші
-            
-            if cached_result:
-                print("Знайдено в кеші:")
-                print(cached_result)
-                continue
+        command = input("Введіть команду: ")
 
-            if command.startswith('name:') or command.startswith('tag:') or command.startswith('tags:'):
-                if command.startswith('name:'):
-                    search_type, search_value = command.split(': ')
-                    search_type = 'name'
-                elif command.startswith('tag:'):
-                    search_type, search_value = command.split(': ')
-                    search_type = 'tags'
-                else:
-                    search_type, search_value = command.split(': ')
-                    search_type = 'tags'
-                    search_value = search_value.replace(',', ' ')
-                    
-                if search_type == 'name':
-                    author_name = search_value
-                    author = Author.objects(name__icontains=author_name).first()
-                    if author:
-                        quotes = Quote.objects(author=author)
-                        results = [quote.text for quote in quotes]
-                    else:
-                        results = ["Автор не знайдений."]
-                elif search_type == 'tags':
-                    tags = search_value.split()
-                    quotes = Quote.objects(tags__in=tags)
-                    results = [quote.text for quote in quotes]
-                else:
-                    results = ["Невірна команда. Спробуйте ще раз."]
+        if command.startswith('name:'):
+            name = command.replace('name:', '').strip()
+            result = search_by_author_name(name)
+            print(result)
+        elif command.startswith('tag:'):
+            tag = command.replace('tag:', '').strip()
+            result = search_by_tags([tag])
+            print(result)
+        elif command.startswith('tags:'):
+            tags = command.replace('tags:', '').strip().split(',')
+            result = search_by_tags(tags)
+            print(result)
+        elif command == 'exit':
+            break
+        else:
+            print("Невірна команда. Спробуйте ще раз.")
 
-                # Збереження результатів у Redis кеші
-                redis_client.set(command, "\n".join(results))
-                print("Результат збережено у Redis кеші:")
-                print("\n".join(results))
+def search_by_author_name(name):
+    # Функція для пошуку цитат за ім'ям автора
+    # Перевіряємо, чи результат не зберігався у кеші Redis
+    cached_result = redis_client.get(f'author:{name}')
+    if cached_result:
+        return cached_result.decode('utf-8')
+    print(f"Ім'я для пошуку: {name}")
+    # Виконуємо пошук у базі даних MongoDB
+    # Витягуємо всі цитати з бази даних
+    quotes = Quote.objects()
+    
+    # Фільтруємо цитати за ім'ям автора, використовуючи регулярний вираз у Python
+    filtered_quotes = [quote for quote in quotes if re.search(f'.*{re.escape(name)}.*', quote.author.fullname, re.IGNORECASE)]
 
-            elif command == 'exit':
-                break
 
-            else:
-                print("Невірна команда. Спробуйте ще раз.")
+    
+    # Створюємо рядок результату
+    result = '\n'.join([quote.quote for quote in filtered_quotes])
+    print(f"Кількість знайдених цитат: {len(filtered_quotes)}")
 
-        except Exception as e:
-            print(f"Помилка: {e}")
+    # Зберігаємо результат у кеші Redis на 5 хвилин
+    redis_client.setex(f'author:{name}', 300, result)
+    return result
 
-if __name__ == "__main__":
-    search_quotes()
+
+
+
+
+

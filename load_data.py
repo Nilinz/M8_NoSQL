@@ -1,37 +1,25 @@
 import json
-from mongoengine import connect
-from models import Author, Quote
-from mongo_setup import setup_mongo_connection
+import pymongo
+from config import get_mongo_uri
 
 def load_data():
-    setup_mongo_connection()
+    # Зчитування URI для MongoDB з конфігураційного файлу
+    mongo_uri = get_mongo_uri()
 
-    # Завантаження даних з JSON файлів
-    with open('authors.json', 'r', encoding='utf-8') as file:
-        authors_data = json.load(file)
+    # Підключення до MongoDB
+    client = pymongo.MongoClient(mongo_uri)
+    db = client.get_database()
 
-    with open('quotes.json', 'r', encoding='utf-8') as file:
-        quotes_data = json.load(file)
+    # Зчитування даних з JSON файлів та збереження в базу даних
+    with open('authors.json', 'r', encoding='utf-8') as authors_file:
+        authors_data = json.load(authors_file)
+        db.authors.insert_many(authors_data)
 
-    # Збереження даних в базі даних MongoDB
-    for author_data in authors_data:
-        fullname = author_data['fullname']
-        born_date = author_data['born_date']
-        born_location = author_data['born_location']
-        description = author_data['description']
-        
-        author = Author(fullname=fullname, born_date=born_date, born_location=born_location, description=description)
-        author.save()
+    with open('quotes.json', 'r', encoding='utf-8') as quotes_file:
+        quotes_data = json.load(quotes_file)
+        db.quotes.insert_many(quotes_data)
 
-    for quote_data in quotes_data:
-        author_name = quote_data['author']
-        text = quote_data['quote']
-        tags = quote_data['tags']
-        
-        author = Author.objects(fullname=author_name).first()
-        quote = Quote(text=text, tags=tags, author=author)
-        quote.save()
+    print("Дані успішно завантажено до бази даних.")
 
 if __name__ == "__main__":
     load_data()
-    print("Data loaded successfully.")

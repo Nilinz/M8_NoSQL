@@ -1,8 +1,12 @@
-from producer import generate_and_send_contacts
-from consumer import process_messages_and_send_email
-from search_quotes import search_quotes
 from load_data import load_data
-import sys
+from producer import send_fake_contacts
+from consumer import consume_messages
+from search_quotes import search_quotes
+import pymongo
+from config import get_mongo_uri
+from mongoengine import connect 
+
+
 
 def print_menu():
     print("Меню:")
@@ -12,25 +16,29 @@ def print_menu():
     print("4. Пошук цитат")
     print("5. Вийти")
 
-
 def main():
+    # Зчитування URI для MongoDB з конфігураційного файлу
+    mongo_uri = get_mongo_uri()
+
+    # Підключення до бази даних MongoDB
+    connect(host=mongo_uri)  # Встановлення з'єднання з базою даних
     while True:
         print_menu()
-        choice = input("Оберіть опцію: ")
-        if choice == '1':
+        choice = input("Виберіть опцію: ")
+
+        if choice == "1":
             load_data()
-        elif choice == '2':
-            generate_and_send_contacts()
-        elif choice == '3':
-            process_messages_and_send_email()
-        elif choice == '4':
+        elif choice == "2":
+            send_fake_contacts()
+        elif choice == "3":
+            consume_messages()
+        elif choice == "4":
             search_quotes()
-        elif choice == '5':
-            print("До побачення!")
+        elif choice == "5":
+            print("Дякую за використання програми. До побачення!")
             break
         else:
-            print("Невірний вибір. Будь ласка, спробуйте ще раз.")
+            print("Невірний вибір опції. Будь ласка, спробуйте ще раз.")
 
 if __name__ == "__main__":
     main()
-    input("Натисніть Enter, щоб вийти...")

@@ -1,52 +1,36 @@
 import pika
 import json
-from mongo_setup import setup_mongo_connection
-import faker
-import configparser
-from mongoengine import Document, StringField, BooleanField
+from models import Contact
+from faker import Faker
 
-# Читання конфігураційних даних
-config = configparser.ConfigParser()
-config.read('config.ini')
+def send_fake_contacts():
+    fake = Faker()
 
-# Підключення до MongoDB
-setup_mongo_connection()
-
-# Модель контакту
-class Contact(Document):
-    fullname = StringField(required=True)
-    email = StringField(required=True)
-    sent = BooleanField(default=False)
-
-def generate_and_send_contacts():
     # Підключення до RabbitMQ
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+    connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
     channel = connection.channel()
 
-    # Створення черги для повідомлень
-    channel.queue_declare(queue='email_queue')
+    # Створення черги
+    channel.queue_declare(queue='contacts')
 
-    # Генерація фейкових контактів та надсилання їх у чергу
-    fake = faker.Faker()
-    for _ in range(10):  # Відправити 10 фейкових контактів
-        contact_data = {
-            "fullname": fake.name(),
-            "email": fake.email()
-        }
-        contact = Contact(**contact_data)
+    # Генерація фейкових контактів та відправлення їх у чергу RabbitMQ
+    for _ in range(10):
+        contact = Contact(
+            fullname=fake.name(),
+            email=fake.email()
+        )
         contact.save()
 
-        # Надіслати ObjectID створеного контакту у чергу RabbitMQ
+        # Відправлення ObjectID контакту у чергу RabbitMQ
         message = {
-            "contact_id": str(contact.id)
+            'contact_id': str(contact.id)
         }
-        channel.basic_publish(exchange='',
-                              routing_key='email_queue',
-                              body=json.dumps(message))
+        channel.basic_publish(exchange='', routing_key='contacts', body=json.dumps(message))
         print(f" [x] Sent {message}")
 
-    # Закриття з'єднання з RabbitMQ
+    # Закриття з'єднання
     connection.close()
 
+# Ця умовна конструкція дозволяє запускати цей файл як скрипт або імпортувати його функції в інших файлах
 if __name__ == "__main__":
-    generate_and_send_contacts()
+    send_fake_contacts()

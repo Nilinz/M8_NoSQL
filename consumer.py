@@ -1,57 +1,32 @@
 import pika
 import json
-from mongo_setup import setup_mongo_connection
-import configparser
-from mongoengine import Document, StringField, BooleanField
+from models import Contact
 
-
-# Читання конфігураційних даних
-config = configparser.ConfigParser()
-config.read('config.ini')
-
-# Підключення до MongoDB
-setup_mongo_connection()
-
-class Contact(Document):
-    fullname = StringField(required=True)
-    email = StringField(required=True)
-    sent = BooleanField(default=False)
-
-
-def process_messages_and_send_email():
+def consume_messages():
     # Підключення до RabbitMQ
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+    connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
     channel = connection.channel()
 
-    # Створення черги для повідомлень
-    channel.queue_declare(queue='email_queue')
+    # Створення черги
+    channel.queue_declare(queue='contacts')
 
-    # Функція для імітації надсилання email
-    def send_email(contact_data):
-        print(f"Sent email to {contact_data['email']}")
-
-    # Функція для обробки отриманих повідомлень
+    # Функція для обробки повідомлень з черги RabbitMQ
     def callback(ch, method, properties, body):
-        message = json.loads(body)
-        contact_id = message.get("contact_id")
+        contact_id = json.loads(body)['contact_id']
+        contact = Contact.objects(id=contact_id).first()
 
-        # Знаходження контакту за ID
-        contact = Contact.objects(id=contact_id, sent=False).first()
         if contact:
-            # Логіка для імітації надсилання email контакту
-            send_email({"email": contact.email})
-            # Позначення контакту як надісланого
-            contact.sent = True
-            contact.save()
+            # Оновлення значення поля 'message_sent' контакту на True
+            contact.update(set__message_sent=True)
+            print(f" [x] Updated message sent status for contact {contact.fullname}")
 
-        print(f"Processed message for contact ID: {contact_id}")
-
-    # Підписка на чергу для отримання повідомлень
-    channel.basic_consume(queue='email_queue', on_message_callback=callback, auto_ack=True)
+    # Вказуємо, що функція callback обробляє повідомлення з черги
+    channel.basic_consume(queue='contacts', on_message_callback=callback, auto_ack=True)
 
     print(' [*] Waiting for messages. To exit press CTRL+C')
+    # Запускаємо обробку повідомлень з черги RabbitMQ
     channel.start_consuming()
 
-# Ця умова потрібна, щоб можна було імпортувати функцію process_messages_and_send_email
+# Ця умовна конструкція дозволяє запускати цей файл як скрипт або імпортувати його функції в інших файлах
 if __name__ == "__main__":
-    process_messages_and_send_email()
+    consume_messages()
